@@ -1,0 +1,920 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model achievements {
+  achievement_id    BigInt               @id @default(autoincrement())
+  achievement_name  String               @db.VarChar(255)
+  description       String?
+  category          AchievementCategory?
+  criteria          Json?
+  badge_image_url   String?              @db.VarChar(500)
+  points            Int                  @default(0)
+  rarity            RarityType           @default(common)
+  is_active         Boolean              @default(true)
+  created_at        DateTime             @default(now())
+  user_achievements user_achievements[]
+}
+
+model ai_recommendations {
+  recommendation_id   BigInt               @id @default(autoincrement())
+  user_id             BigInt
+  recommendation_type RecommendationType
+  title               String               @db.VarChar(255)
+  description         String?
+  ai_confidence_score Decimal?             @db.Decimal(3, 2)
+  priority            PriorityType         @default(medium)
+  status              RecommendationStatus @default(pending)
+  related_entity_type String?              @db.VarChar(50)
+  related_entity_id   BigInt?
+  metadata            Json?
+  expires_at          DateTime?
+  viewed_at           DateTime?
+  created_at          DateTime             @default(now())
+  users               users                @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+model collaborator_reviews {
+  review_id         BigInt        @id @default(autoincrement())
+  collaborator_id   BigInt
+  user_id           BigInt
+  rating            Int
+  title             String?       @db.VarChar(255)
+  comment           String?
+  visit_date        DateTime?     @db.Date
+  is_verified_visit Boolean       @default(false)
+  helpful_count     Int           @default(0)
+  images            Json?
+  status            ReviewStatus  @default(pending)
+  created_at        DateTime      @default(now())
+  updated_at        DateTime
+  collaborators     collaborators @relation(fields: [collaborator_id], references: [collaborator_id], onDelete: Cascade)
+  users             users         @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+model collaborator_types {
+  type_id       BigInt          @id @default(autoincrement())
+  type_name     String          @unique @db.VarChar(100)
+  type_slug     String          @unique @db.VarChar(100)
+  description   String?
+  icon_url      String?         @db.VarChar(500)
+  created_at    DateTime        @default(now())
+  collaborators collaborators[]
+}
+
+model collaborators {
+  collaborator_id             BigInt                        @id @default(autoincrement())
+  type_id                     BigInt
+  name                        String                        @db.VarChar(255)
+  description                 String?
+  logo_url                    String?                       @db.VarChar(500)
+  cover_image_url             String?                       @db.VarChar(500)
+  phone                       String?                       @db.VarChar(20)
+  email                       String?                       @db.VarChar(255)
+  website                     String?                       @db.VarChar(500)
+  address_line1               String?                       @db.VarChar(255)
+  city                        String?                       @db.VarChar(100)
+  country                     String?                       @db.VarChar(100)
+  latitude                    Decimal?                      @db.Decimal(10, 8)
+  longitude                   Decimal?                      @db.Decimal(11, 8)
+  rating                      Decimal?                      @db.Decimal(3, 2)
+  review_count                Int                           @default(0)
+  is_verified                 Boolean                       @default(false)
+  is_premium_partner          Boolean                       @default(false)
+  business_hours              Json?
+  amenities                   Json?
+  price_range                 PriceRange?
+  status                      CollaboratorStatus            @default(pending_approval)
+  created_at                  DateTime                      @default(now())
+  updated_at                  DateTime
+  collaborator_reviews        collaborator_reviews[]
+  collaborator_types          collaborator_types            @relation(fields: [type_id], references: [type_id])
+  user_favorite_collaborators user_favorite_collaborators[]
+}
+
+model conversation_participants {
+  participant_id  BigInt          @id @default(autoincrement())
+  conversation_id BigInt
+  user_id         BigInt
+  role            ParticipantRole @default(member)
+  joined_at       DateTime        @default(now())
+  last_read_at    DateTime?
+  is_muted        Boolean         @default(false)
+  is_archived     Boolean         @default(false)
+  conversations   conversations   @relation(fields: [conversation_id], references: [conversation_id], onDelete: Cascade)
+  users           users           @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@unique([conversation_id, user_id])
+}
+
+model conversations {
+  conversation_id           BigInt                      @id @default(autoincrement())
+  conversation_type         ConversationType
+  conversation_name         String?                     @db.VarChar(255)
+  is_ai_coach               Boolean                     @default(false)
+  created_by                BigInt
+  last_message_at           DateTime?
+  created_at                DateTime                    @default(now())
+  updated_at                DateTime
+  conversation_participants conversation_participants[]
+  users                     users                       @relation(fields: [created_by], references: [user_id], onDelete: Cascade)
+  messages                  messages[]
+}
+
+model custom_schedules {
+  schedule_id        BigInt           @id @default(autoincrement())
+  user_id            BigInt
+  schedule_name      String           @db.VarChar(255)
+  description        String?
+  scheduleType       ScheduleType?
+  is_vr              Boolean          @default(false)
+  start_date         DateTime?        @db.Date
+  end_date           DateTime?        @db.Date
+  recurrence_pattern Json?
+  is_active          Boolean          @default(true)
+  created_at         DateTime         @default(now())
+  updated_at         DateTime
+  users              users            @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  schedule_items     schedule_items[]
+}
+
+model event_participants {
+  participant_id      BigInt             @id @default(autoincrement())
+  event_id            BigInt
+  user_id             BigInt
+  registration_status RegistrationStatus @default(registered)
+  payment_status      PaymentStatus      @default(free)
+  notes               String?
+  registered_at       DateTime           @default(now())
+  attended_at         DateTime?
+  events              events             @relation(fields: [event_id], references: [event_id], onDelete: Cascade)
+  users               users              @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@unique([event_id, user_id])
+}
+
+model events {
+  event_id              BigInt               @id @default(autoincrement())
+  organizer_id          BigInt
+  event_name            String               @db.VarChar(255)
+  description           String?
+  event_type            EventType?
+  location_type         LocationType?
+  venue_name            String?              @db.VarChar(255)
+  address               String?
+  latitude              Decimal?             @db.Decimal(10, 8)
+  longitude             Decimal?             @db.Decimal(11, 8)
+  virtual_link          String?              @db.VarChar(500)
+  is_vr                 Boolean              @default(false)
+  start_datetime        DateTime
+  end_datetime          DateTime
+  max_participants      Int?
+  current_participants  Int                  @default(0)
+  registration_deadline DateTime?
+  price                 Decimal              @default(0) @db.Decimal(10, 2)
+  currency              String               @default("EUR") @db.VarChar(3)
+  image_url             String?              @db.VarChar(500)
+  status                EventStatus          @default(draft)
+  is_ai_recommended     Boolean              @default(false)
+  tags                  Json?
+  created_at            DateTime             @default(now())
+  updated_at            DateTime
+  event_participants    event_participants[]
+  users                 users                @relation(fields: [organizer_id], references: [user_id], onDelete: Cascade)
+}
+
+model exercises {
+  exercise_id         BigInt              @id @default(autoincrement())
+  exercise_name       String              @db.VarChar(255)
+  category            ExerciseCategory?
+  description         String?
+  instructions        String?
+  difficulty          DifficultyLevel?
+  equipment_needed    Json?
+  muscle_groups       Json?
+  calories_per_minute Decimal?            @db.Decimal(5, 2)
+  video_url           String?             @db.VarChar(500)
+  image_url           String?             @db.VarChar(500)
+  is_vr_compatible    Boolean             @default(false)
+  created_at          DateTime            @default(now())
+  updated_at          DateTime
+  session_exercises   session_exercises[]
+}
+
+model friendships {
+  friendship_id                      BigInt           @id @default(autoincrement())
+  user_id                            BigInt
+  friend_id                          BigInt
+  status                             FriendshipStatus @default(pending)
+  requested_at                       DateTime         @default(now())
+  accepted_at                        DateTime?
+  users_friendships_friend_idTousers users            @relation("friendships_friend_idTousers", fields: [friend_id], references: [user_id], onDelete: Cascade)
+  users_friendships_user_idTousers   users            @relation("friendships_user_idTousers", fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@unique([user_id, friend_id])
+}
+
+model goals {
+  goal_id        BigInt           @id @default(autoincrement())
+  user_id        BigInt
+  goal_type      GoalType
+  title          String           @db.VarChar(255)
+  description    String?
+  target_value   Decimal?         @db.Decimal(10, 2)
+  current_value  Decimal?         @db.Decimal(10, 2)
+  unit           String?          @db.VarChar(50)
+  start_date     DateTime?        @db.Date
+  target_date    DateTime?        @db.Date
+  status         GoalStatus       @default(active)
+  priority       PriorityType     @default(medium)
+  is_primary     Boolean          @default(false)
+  created_at     DateTime         @default(now())
+  updated_at     DateTime
+  users          users            @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  training_plans training_plans[]
+}
+
+model health_profiles {
+  health_profile_id          BigInt         @id @default(autoincrement())
+  user_id                    BigInt         @unique
+  height                     Decimal?       @db.Decimal(5, 2)
+  weight                     Decimal?       @db.Decimal(5, 2)
+  fitness_level              FitnessLevel   @default(beginner)
+  activity_level             ActivityLevel?
+  allergies                  Json?
+  medical_conditions         Json?
+  medications                Json?
+  emergency_contact_name     String?        @db.VarChar(255)
+  emergency_contact_phone    String?        @db.VarChar(20)
+  emergency_contact_relation String?        @db.VarChar(100)
+  created_at                 DateTime       @default(now())
+  updated_at                 DateTime
+  users                      users          @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+model messages {
+  message_id          BigInt        @id @default(autoincrement())
+  conversation_id     BigInt
+  sender_id           BigInt
+  message_type        MessageType   @default(text)
+  content             String?
+  media_url           String?       @db.VarChar(500)
+  media_type          String?       @db.VarChar(50)
+  media_size_bytes    BigInt?
+  is_ai_generated     Boolean       @default(false)
+  ai_model_version    String?       @db.VarChar(50)
+  reply_to_message_id BigInt?
+  is_edited           Boolean       @default(false)
+  edited_at           DateTime?
+  is_deleted          Boolean       @default(false)
+  deleted_at          DateTime?
+  created_at          DateTime      @default(now())
+  conversations       conversations @relation(fields: [conversation_id], references: [conversation_id], onDelete: Cascade)
+  messages            messages?     @relation("messagesTomessages", fields: [reply_to_message_id], references: [message_id])
+  other_messages      messages[]    @relation("messagesTomessages")
+  users               users         @relation(fields: [sender_id], references: [user_id], onDelete: Cascade)
+}
+
+model notifications {
+  notification_id     BigInt               @id @default(autoincrement())
+  user_id             BigInt
+  notification_type   NotificationType
+  title               String               @db.VarChar(255)
+  message             String?
+  is_read             Boolean              @default(false)
+  action_url          String?              @db.VarChar(500)
+  related_entity_type String?              @db.VarChar(50)
+  related_entity_id   BigInt?
+  priority            NotificationPriority @default(normal)
+  expires_at          DateTime?
+  read_at             DateTime?
+  created_at          DateTime             @default(now())
+  users               users                @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+model route_activities {
+  activity_id         BigInt   @id @default(autoincrement())
+  route_id            BigInt
+  user_id             BigInt
+  activity_date       DateTime
+  duration_minutes    Int?
+  distance_km         Decimal? @db.Decimal(8, 2)
+  average_pace        String?  @db.VarChar(20)
+  average_speed_kmh   Decimal? @db.Decimal(5, 2)
+  max_speed_kmh       Decimal? @db.Decimal(5, 2)
+  calories_burned     Decimal? @db.Decimal(6, 2)
+  average_heart_rate  Int?
+  max_heart_rate      Int?
+  elevation_gain_m    Decimal? @db.Decimal(8, 2)
+  weather_conditions  String?  @db.VarChar(100)
+  temperature_celsius Decimal? @db.Decimal(4, 1)
+  notes               String?
+  gps_data            Json?
+  photos              Json?
+  is_shared           Boolean  @default(false)
+  created_at          DateTime @default(now())
+  routes              routes   @relation(fields: [route_id], references: [route_id], onDelete: Cascade)
+  users               users    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+model route_shares {
+  share_id                                      BigInt   @id @default(autoincrement())
+  route_id                                      BigInt
+  shared_by_user_id                             BigInt
+  shared_with_user_id                           BigInt
+  message                                       String?
+  shared_at                                     DateTime @default(now())
+  routes                                        routes   @relation(fields: [route_id], references: [route_id], onDelete: Cascade)
+  users_route_shares_shared_by_user_idTousers   users    @relation("route_shares_shared_by_user_idTousers", fields: [shared_by_user_id], references: [user_id], onDelete: Cascade)
+  users_route_shares_shared_with_user_idTousers users    @relation("route_shares_shared_with_user_idTousers", fields: [shared_with_user_id], references: [user_id], onDelete: Cascade)
+}
+
+model routes {
+  route_id                   BigInt             @id @default(autoincrement())
+  user_id                    BigInt
+  route_name                 String             @db.VarChar(255)
+  description                String?
+  route_type                 RouteType?
+  is_shared                  Boolean            @default(false)
+  privacy                    PrivacyType        @default(private)
+  start_location_name        String?            @db.VarChar(255)
+  start_latitude             Decimal?           @db.Decimal(10, 8)
+  start_longitude            Decimal?           @db.Decimal(11, 8)
+  end_location_name          String?            @db.VarChar(255)
+  end_latitude               Decimal?           @db.Decimal(10, 8)
+  end_longitude              Decimal?           @db.Decimal(11, 8)
+  distance_km                Decimal?           @db.Decimal(8, 2)
+  elevation_gain_m           Decimal?           @db.Decimal(8, 2)
+  estimated_duration_minutes Int?
+  difficulty                 DifficultyLevel?
+  route_data                 Json?
+  terrain_type               TerrainType?
+  is_loop                    Boolean            @default(false)
+  surface_types              Json?
+  landmarks                  Json?
+  image_url                  String?            @db.VarChar(500)
+  view_count                 Int                @default(0)
+  like_count                 Int                @default(0)
+  created_at                 DateTime           @default(now())
+  updated_at                 DateTime
+  route_activities           route_activities[]
+  route_shares               route_shares[]
+  users                      users              @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+model schedule_items {
+  item_id                 BigInt           @id @default(autoincrement())
+  schedule_id             BigInt
+  item_type               ItemType?
+  title                   String           @db.VarChar(255)
+  description             String?
+  scheduled_date          DateTime         @db.Date
+  scheduled_time          DateTime?        @db.Time(6)
+  duration_minutes        Int?
+  location                String?          @db.VarChar(255)
+  is_vr                   Boolean          @default(false)
+  related_entity_type     String?          @db.VarChar(50)
+  related_entity_id       BigInt?
+  status                  ItemStatus       @default(scheduled)
+  reminder_minutes_before Int?
+  notes                   String?
+  created_at              DateTime         @default(now())
+  updated_at              DateTime
+  custom_schedules        custom_schedules @relation(fields: [schedule_id], references: [schedule_id], onDelete: Cascade)
+}
+
+model session_exercises {
+  session_exercise_id BigInt           @id @default(autoincrement())
+  session_id          BigInt
+  exercise_id         BigInt
+  order_index         Int
+  sets                Int?
+  reps                Int?
+  duration_minutes    Int?
+  weight_kg           Decimal?         @db.Decimal(6, 2)
+  distance_km         Decimal?         @db.Decimal(6, 2)
+  speed_kmh           Decimal?         @db.Decimal(5, 2)
+  rest_seconds        Int?
+  notes               String?
+  completed           Boolean          @default(false)
+  created_at          DateTime         @default(now())
+  exercises           exercises        @relation(fields: [exercise_id], references: [exercise_id], onDelete: Cascade)
+  workout_sessions    workout_sessions @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
+}
+
+model stories {
+  story_id         BigInt        @id @default(autoincrement())
+  user_id          BigInt
+  story_type       StoryType
+  content          String?
+  media_url        String?       @db.VarChar(500)
+  thumbnail_url    String?       @db.VarChar(500)
+  duration_seconds Int?
+  view_count       Int           @default(0)
+  is_interactive   Boolean       @default(false)
+  interaction_data Json?
+  expires_at       DateTime
+  status           StoryStatus   @default(active)
+  created_at       DateTime      @default(now())
+  users            users         @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  story_views      story_views[]
+}
+
+model story_views {
+  view_id          BigInt   @id @default(autoincrement())
+  story_id         BigInt
+  viewer_id        BigInt
+  viewed_at        DateTime @default(now())
+  interaction_data Json?
+  stories          stories  @relation(fields: [story_id], references: [story_id], onDelete: Cascade)
+  users            users    @relation(fields: [viewer_id], references: [user_id], onDelete: Cascade)
+
+  @@unique([story_id, viewer_id])
+}
+
+model training_plans {
+  plan_id             BigInt             @id @default(autoincrement())
+  user_id             BigInt
+  goal_id             BigInt?
+  plan_name           String             @db.VarChar(255)
+  description         String?
+  plan_type           PlanType           @default(ai_generated)
+  difficulty_level    DifficultyLevel?
+  duration_weeks      Int?
+  start_date          DateTime?          @db.Date
+  end_date            DateTime?          @db.Date
+  status              PlanStatus         @default(draft)
+  ai_model_version    String?            @db.VarChar(50)
+  customization_score Decimal?           @db.Decimal(3, 2)
+  created_at          DateTime           @default(now())
+  updated_at          DateTime
+  goals               goals?             @relation(fields: [goal_id], references: [goal_id])
+  users               users              @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  workout_sessions    workout_sessions[]
+}
+
+model user_achievements {
+  user_achievement_id BigInt       @id @default(autoincrement())
+  user_id             BigInt
+  achievement_id      BigInt
+  unlocked_at         DateTime     @default(now())
+  progress_percentage Int          @default(100)
+  achievements        achievements @relation(fields: [achievement_id], references: [achievement_id], onDelete: Cascade)
+  users               users        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@unique([user_id, achievement_id])
+}
+
+model user_favorite_collaborators {
+  favorite_id     BigInt        @id @default(autoincrement())
+  user_id         BigInt
+  collaborator_id BigInt
+  notes           String?
+  created_at      DateTime      @default(now())
+  collaborators   collaborators @relation(fields: [collaborator_id], references: [collaborator_id], onDelete: Cascade)
+  users           users         @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@unique([user_id, collaborator_id])
+}
+
+model user_metrics {
+  metric_id                BigInt   @id @default(autoincrement())
+  user_id                  BigInt
+  metric_date              DateTime @db.Date
+  weight_kg                Decimal? @db.Decimal(5, 2)
+  body_fat_percentage      Decimal? @db.Decimal(4, 2)
+  muscle_mass_kg           Decimal? @db.Decimal(5, 2)
+  bmi                      Decimal? @db.Decimal(4, 2)
+  waist_cm                 Decimal? @db.Decimal(5, 2)
+  chest_cm                 Decimal? @db.Decimal(5, 2)
+  arms_cm                  Decimal? @db.Decimal(5, 2)
+  thighs_cm                Decimal? @db.Decimal(5, 2)
+  resting_heart_rate       Int?
+  blood_pressure_systolic  Int?
+  blood_pressure_diastolic Int?
+  vo2_max                  Decimal? @db.Decimal(5, 2)
+  sleep_hours              Decimal? @db.Decimal(4, 2)
+  water_intake_liters      Decimal? @db.Decimal(4, 2)
+  stress_level             Int?
+  energy_level             Int?
+  notes                    String?
+  created_at               DateTime @default(now())
+  users                    users    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@unique([user_id, metric_date])
+}
+
+model user_preferences {
+  preference_id              BigInt   @id @default(autoincrement())
+  user_id                    BigInt   @unique
+  preferred_workout_time     String?  @db.VarChar(20)
+  preferred_workout_duration Int?
+  workout_frequency_per_week Int?
+  preferred_workout_types    Json?
+  dietary_preferences        Json?
+  notification_enabled       Boolean  @default(true)
+  notification_types         Json?
+  language                   String   @default("fr") @db.VarChar(10)
+  timezone                   String   @default("Europe/Paris") @db.VarChar(50)
+  unit_system                String   @default("metric") @db.VarChar(20)
+  vr_preference              Boolean  @default(false)
+  created_at                 DateTime @default(now())
+  updated_at                 DateTime
+  users                      users    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+model user_profiles {
+  profile_id          BigInt      @id @default(autoincrement())
+  user_id             BigInt      @unique
+  first_name          String?     @db.VarChar(100)
+  last_name           String?     @db.VarChar(100)
+  date_of_birth       DateTime?   @db.Date
+  gender              GenderType?
+  profile_picture_url String?     @db.VarChar(500)
+  bio                 String?
+  address_line1       String?     @db.VarChar(255)
+  address_line2       String?     @db.VarChar(255)
+  city                String?     @db.VarChar(100)
+  state               String?     @db.VarChar(100)
+  postal_code         String?     @db.VarChar(20)
+  country             String?     @db.VarChar(100)
+  latitude            Decimal?    @db.Decimal(10, 8)
+  longitude           Decimal?    @db.Decimal(11, 8)
+  created_at          DateTime    @default(now())
+  updated_at          DateTime
+  users               users       @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+model user_sessions {
+  session_id       String   @id @db.VarChar(255)
+  user_id          BigInt
+  device_type      String?  @db.VarChar(100)
+  device_name      String?  @db.VarChar(255)
+  os               String?  @db.VarChar(100)
+  browser          String?  @db.VarChar(100)
+  ip_address       String?  @db.VarChar(45)
+  location_country String?  @db.VarChar(100)
+  location_city    String?  @db.VarChar(100)
+  is_active        Boolean  @default(true)
+  last_activity_at DateTime @default(now())
+  created_at       DateTime @default(now())
+  expires_at       DateTime
+  users            users    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+model users {
+  user_id                                              BigInt                        @id @default(autoincrement())
+  email                                                String                        @unique @db.VarChar(255)
+  password_hash                                        String                        @db.VarChar(255)
+  username                                             String                        @unique @db.VarChar(100)
+  phone                                                String?                       @db.VarChar(20)
+  status                                               UserStatus                    @default(active)
+  email_verified                                       Boolean                       @default(false)
+  phone_verified                                       Boolean                       @default(false)
+  profile_completed                                    Boolean                       @default(false)
+  created_at                                           DateTime                      @default(now())
+  updated_at                                           DateTime
+  last_login                                           DateTime?
+  ai_recommendations                                   ai_recommendations[]
+  collaborator_reviews                                 collaborator_reviews[]
+  conversation_participants                            conversation_participants[]
+  conversations                                        conversations[]
+  custom_schedules                                     custom_schedules[]
+  event_participants                                   event_participants[]
+  events                                               events[]
+  friendships_friendships_friend_idTousers             friendships[]                 @relation("friendships_friend_idTousers")
+  friendships_friendships_user_idTousers               friendships[]                 @relation("friendships_user_idTousers")
+  goals                                                goals[]
+  health_profiles                                      health_profiles?
+  messages                                             messages[]
+  notifications                                        notifications[]
+  route_activities                                     route_activities[]
+  route_shares_route_shares_shared_by_user_idTousers   route_shares[]                @relation("route_shares_shared_by_user_idTousers")
+  route_shares_route_shares_shared_with_user_idTousers route_shares[]                @relation("route_shares_shared_with_user_idTousers")
+  routes                                               routes[]
+  stories                                              stories[]
+  story_views                                          story_views[]
+  training_plans                                       training_plans[]
+  user_achievements                                    user_achievements[]
+  user_favorite_collaborators                          user_favorite_collaborators[]
+  user_metrics                                         user_metrics[]
+  user_preferences                                     user_preferences?
+  user_profiles                                        user_profiles?
+  user_sessions                                        user_sessions[]
+  workout_sessions                                     workout_sessions[]
+}
+
+model workout_sessions {
+  session_id        BigInt              @id @default(autoincrement())
+  user_id           BigInt
+  plan_id           BigInt?
+  session_date      DateTime            @db.Date
+  session_time      DateTime?           @db.Time(6)
+  duration_minutes  Int?
+  calories_burned   Decimal?            @db.Decimal(6, 2)
+  status            SessionStatus       @default(scheduled)
+  notes             String?
+  rating            Int?
+  difficulty_rating Int?
+  mood_before       MoodType?
+  mood_after        MoodType?
+  created_at        DateTime            @default(now())
+  updated_at        DateTime
+  session_exercises session_exercises[]
+  training_plans    training_plans?     @relation(fields: [plan_id], references: [plan_id])
+  users             users               @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+enum AchievementCategory {
+  distance
+  frequency
+  duration
+  weight
+  social
+  streak
+  special
+}
+
+enum ActivityLevel {
+  sedentary
+  lightly_active
+  moderately_active
+  very_active
+  extremely_active
+}
+
+enum CollaboratorStatus {
+  active
+  inactive
+  pending_approval
+}
+
+enum ConversationType {
+  direct
+  group
+  ai_coach
+  event
+}
+
+enum DifficultyLevel {
+  beginner
+  intermediate
+  advanced
+  expert
+}
+
+enum EventStatus {
+  draft
+  published
+  cancelled
+  completed
+}
+
+enum EventType {
+  group_workout
+  competition
+  workshop
+  social
+  challenge
+  other
+}
+
+enum ExerciseCategory {
+  cardio
+  strength
+  flexibility
+  balance
+  sports
+  meditation
+  other
+}
+
+enum FitnessLevel {
+  beginner
+  intermediate
+  advanced
+  expert
+}
+
+enum FriendshipStatus {
+  pending
+  accepted
+  blocked
+  rejected
+}
+
+enum GenderType {
+  male
+  female
+  other
+  prefer_not_to_say
+}
+
+enum GoalStatus {
+  active
+  completed
+  paused
+  abandoned
+}
+
+enum GoalType {
+  weight_loss
+  muscle_gain
+  endurance
+  flexibility
+  health
+  custom
+}
+
+enum ItemStatus {
+  scheduled
+  completed
+  cancelled
+  rescheduled
+}
+
+enum ItemType {
+  workout
+  meal
+  event
+  reminder
+  custom
+}
+
+enum LocationType {
+  physical
+  virtual
+  hybrid
+}
+
+enum MessageType {
+  text
+  image
+  video
+  audio
+  file
+  system
+  story
+}
+
+enum MoodType {
+  great
+  good
+  okay
+  tired
+  exhausted
+  energized
+}
+
+enum NotificationPriority {
+  low
+  normal
+  high
+  urgent
+}
+
+enum NotificationType {
+  friend_request
+  message
+  event
+  workout_reminder
+  achievement
+  ai_recommendation
+  system
+}
+
+enum ParticipantRole {
+  member
+  admin
+  owner
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  refunded
+  free
+}
+
+enum PlanStatus {
+  active
+  completed
+  paused
+  draft
+}
+
+enum PlanType {
+  ai_generated
+  custom
+  template
+}
+
+enum PriceRange {
+  budget
+  moderate
+  expensive
+  luxury
+}
+
+enum PriorityType {
+  low
+  medium
+  high
+}
+
+enum PrivacyType {
+  private
+  friends
+  public
+}
+
+enum RarityType {
+  common
+  uncommon
+  rare
+  epic
+  legendary
+}
+
+enum RecommendationStatus {
+  pending
+  viewed
+  accepted
+  dismissed
+}
+
+enum RecommendationType {
+  workout
+  nutrition
+  event
+  collaborator
+  general
+}
+
+enum RegistrationStatus {
+  registered
+  waitlist
+  confirmed
+  cancelled
+  attended
+}
+
+enum ReviewStatus {
+  pending
+  approved
+  rejected
+  flagged
+}
+
+enum RouteType {
+  running
+  cycling
+  walking
+  hiking
+  other
+}
+
+enum ScheduleType {
+  workout
+  meal
+  event
+  mixed
+}
+
+enum SessionStatus {
+  scheduled
+  completed
+  skipped
+  in_progress
+}
+
+enum StoryStatus {
+  active
+  expired
+  deleted
+}
+
+enum StoryType {
+  image
+  video
+  text
+  workout_achievement
+  goal_milestone
+}
+
+enum TerrainType {
+  road
+  trail
+  mixed
+}
+
+enum UserStatus {
+  active
+  inactive
+  suspended
+  deleted
+}

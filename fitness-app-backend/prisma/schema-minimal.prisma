@@ -1,0 +1,206 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  userId           BigInt     @id @default(autoincrement()) @map("user_id")
+  email            String     @unique @db.VarChar(255)
+  passwordHash     String     @map("password_hash") @db.VarChar(255)
+  username         String     @unique @db.VarChar(100)
+  phone            String?    @db.VarChar(20)
+  status           String     @default("active")
+  emailVerified    Boolean    @default(false) @map("email_verified")
+  phoneVerified    Boolean    @default(false) @map("phone_verified")
+  profileCompleted Boolean    @default(false) @map("profile_completed")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+  lastLogin        DateTime?  @map("last_login")
+
+  profile                    UserProfile?
+  healthProfile              HealthProfile?
+  preferences                UserPreference?
+  goals                      Goal[]
+  trainingPlans              TrainingPlan[]
+  workoutSessions            WorkoutSession[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  profileId         BigInt      @id @default(autoincrement()) @map("profile_id")
+  userId            BigInt      @unique @map("user_id")
+  firstName         String?     @map("first_name") @db.VarChar(100)
+  lastName          String?     @map("last_name") @db.VarChar(100)
+  dateOfBirth       DateTime?   @map("date_of_birth") @db.Date
+  gender            String?
+  profilePictureUrl String?     @map("profile_picture_url") @db.VarChar(500)
+  bio               String?
+  addressLine1      String?     @map("address_line1") @db.VarChar(255)
+  addressLine2      String?     @map("address_line2") @db.VarChar(255)
+  city              String?     @db.VarChar(100)
+  state             String?     @db.VarChar(100)
+  postalCode        String?     @map("postal_code") @db.VarChar(20)
+  country           String?     @db.VarChar(100)
+  latitude          Decimal?    @db.Decimal(10, 8)
+  longitude         Decimal?    @db.Decimal(11, 8)
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  user              User        @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model HealthProfile {
+  healthProfileId          BigInt         @id @default(autoincrement()) @map("health_profile_id")
+  userId                   BigInt         @unique @map("user_id")
+  height                   Decimal?       @db.Decimal(5, 2)
+  weight                   Decimal?       @db.Decimal(5, 2)
+  fitnessLevel             String         @default("beginner") @map("fitness_level")
+  activityLevel            String?        @map("activity_level")
+  allergies                Json?
+  medicalConditions        Json?          @map("medical_conditions")
+  medications              Json?
+  emergencyContactName     String?        @map("emergency_contact_name") @db.VarChar(255)
+  emergencyContactPhone    String?        @map("emergency_contact_phone") @db.VarChar(20)
+  emergencyContactRelation String?        @map("emergency_contact_relation") @db.VarChar(100)
+  createdAt                DateTime       @default(now()) @map("created_at")
+  updatedAt                DateTime       @updatedAt @map("updated_at")
+  user                     User           @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("health_profiles")
+}
+
+model UserPreference {
+  preferenceId             BigInt   @id @default(autoincrement()) @map("preference_id")
+  userId                   BigInt   @unique @map("user_id")
+  preferredWorkoutTime     String?  @map("preferred_workout_time") @db.VarChar(20)
+  preferredWorkoutDuration Int?     @map("preferred_workout_duration")
+  workoutFrequencyPerWeek  Int?     @map("workout_frequency_per_week")
+  preferredWorkoutTypes    Json?    @map("preferred_workout_types")
+  dietaryPreferences       Json?    @map("dietary_preferences")
+  notificationEnabled      Boolean  @default(true) @map("notification_enabled")
+  notificationTypes        Json?    @map("notification_types")
+  language                 String   @default("fr") @db.VarChar(10)
+  timezone                 String   @default("Europe/Paris") @db.VarChar(50)
+  unitSystem               String   @default("metric") @map("unit_system") @db.VarChar(20)
+  vrPreference             Boolean  @default(false) @map("vr_preference")
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+  user                     User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model Goal {
+  goalId        BigInt   @id @default(autoincrement()) @map("goal_id")
+  userId        BigInt   @map("user_id")
+  goalType      String   @map("goal_type")
+  title         String   @db.VarChar(255)
+  description   String?
+  targetValue   Decimal? @map("target_value") @db.Decimal(10, 2)
+  currentValue  Decimal? @map("current_value") @db.Decimal(10, 2)
+  unit          String?  @db.VarChar(50)
+  startDate     DateTime? @map("start_date") @db.Date
+  targetDate    DateTime? @map("target_date") @db.Date
+  status        String   @default("active")
+  priority      String   @default("medium")
+  isPrimary     Boolean  @default(false) @map("is_primary")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  user          User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  trainingPlans TrainingPlan[]
+
+  @@map("goals")
+}
+
+model TrainingPlan {
+  planId             BigInt    @id @default(autoincrement()) @map("plan_id")
+  userId             BigInt    @map("user_id")
+  goalId             BigInt?   @map("goal_id")
+  planName           String    @map("plan_name") @db.VarChar(255)
+  description        String?
+  planType           String    @default("ai_generated") @map("plan_type")
+  difficultyLevel    String?   @map("difficulty_level")
+  durationWeeks      Int?      @map("duration_weeks")
+  startDate          DateTime? @map("start_date") @db.Date
+  endDate            DateTime? @map("end_date") @db.Date
+  status             String    @default("draft")
+  aiModelVersion     String?   @map("ai_model_version") @db.VarChar(50)
+  customizationScore Decimal?  @map("customization_score") @db.Decimal(3, 2)
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  goal               Goal?     @relation(fields: [goalId], references: [goalId])
+  user               User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  workoutSessions    WorkoutSession[]
+
+  @@map("training_plans")
+}
+
+model Exercise {
+  exerciseId        BigInt    @id @default(autoincrement()) @map("exercise_id")
+  exerciseName      String    @map("exercise_name") @db.VarChar(255)
+  category          String?
+  description       String?
+  instructions      String?
+  difficulty        String?
+  equipmentNeeded   Json?     @map("equipment_needed")
+  muscleGroups      Json?     @map("muscle_groups")
+  caloriesPerMinute Decimal?  @map("calories_per_minute") @db.Decimal(5, 2)
+  videoUrl          String?   @map("video_url") @db.VarChar(500)
+  imageUrl          String?   @map("image_url") @db.VarChar(500)
+  isVrCompatible    Boolean   @default(false) @map("is_vr_compatible")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  sessionExercises  SessionExercise[]
+
+  @@map("exercises")
+}
+
+model WorkoutSession {
+  sessionId        BigInt    @id @default(autoincrement()) @map("session_id")
+  userId           BigInt    @map("user_id")
+  planId           BigInt?   @map("plan_id")
+  sessionDate      DateTime  @map("session_date") @db.Date
+  sessionTime      DateTime? @map("session_time") @db.Time(6)
+  durationMinutes  Int?      @map("duration_minutes")
+  caloriesBurned   Decimal?  @map("calories_burned") @db.Decimal(6, 2)
+  status           String    @default("scheduled")
+  notes            String?
+  rating           Int?
+  difficultyRating Int?       @map("difficulty_rating")
+  moodBefore       String?   @map("mood_before")
+  moodAfter        String?   @map("mood_after")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  exercises        SessionExercise[]
+  plan             TrainingPlan? @relation(fields: [planId], references: [planId])
+  user             User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("workout_sessions")
+}
+
+model SessionExercise {
+  sessionExerciseId BigInt   @id @default(autoincrement()) @map("session_exercise_id")
+  sessionId         BigInt   @map("session_id")
+  exerciseId        BigInt   @map("exercise_id")
+  orderIndex        Int      @map("order_index")
+  sets              Int?
+  reps              Int?
+  durationMinutes   Int?     @map("duration_minutes")
+  weightKg          Decimal? @map("weight_kg") @db.Decimal(6, 2)
+  distanceKm        Decimal? @map("distance_km") @db.Decimal(6, 2)
+  speedKmh          Decimal? @map("speed_kmh") @db.Decimal(5, 2)
+  restSeconds       Int?     @map("rest_seconds")
+  notes             String?
+  completed         Boolean  @default(false)
+  createdAt         DateTime @default(now()) @map("created_at")
+  exercise          Exercise @relation(fields: [exerciseId], references: [exerciseId], onDelete: Cascade)
+  session           WorkoutSession @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+
+  @@map("session_exercises")
+}
